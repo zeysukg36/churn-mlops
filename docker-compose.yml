@@ -1,0 +1,35 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: churn_mongo
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - churn_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: churn_api
+    restart: unless-stopped
+    env_file:
+      - ./api/.env
+    environment:
+      MODEL_PATH: ml/rf_model.pkl
+      MODEL_METADATA_PATH: ml/model_metadata.json
+      MONGO_URI: mongodb://mongo:27017
+    ports:
+      - "${API_PORT}:8001"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  churn_mongo_data:

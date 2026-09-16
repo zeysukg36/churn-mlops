@@ -1,0 +1,10 @@
+data/
+ml/*.py
+ml/__pycache__/
+venv/
+**/__pycache__/
+*.pyc
+.env
+api/.env
+.git
+README.md
