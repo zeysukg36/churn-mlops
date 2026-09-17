@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from contextlib import asynccontextmanager
 import joblib
 import json
@@ -13,8 +13,9 @@ from models import (
     BatchPredictionRequest,
     BatchPredictionResponse,
     ModelInfoResponse,
+    StatsResponse, 
 )
-from database import log_collection
+from database import log_collection, get_stats_sync
 
 ml_models = {}
 
@@ -120,3 +121,11 @@ async def predict_churn_batch(batch_request: BatchPredictionRequest):
         print(f"[WARN] Toplu loglama başarısız: {e}")
 
     return BatchPredictionResponse(results=results)
+
+@app.get("/stats", response_model=StatsResponse)
+async def get_stats(limit: int = Query(default=100, ge=1, le=1000)):
+    try:
+        stats = await run_in_threadpool(get_stats_sync, limit)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"İstatistikler alınamadı: {e}")
+    return StatsResponse(**stats)

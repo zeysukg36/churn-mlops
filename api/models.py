@@ -46,3 +46,16 @@ class ModelInfoResponse(BaseModel):
     trained_at: str
     metrics: dict
     features_expected: int
+
+# api/models.py — dosyanın sonuna eklenecek
+
+class ProbabilityBucket(BaseModel):
+    range: str
+    count: int
+
+class StatsResponse(BaseModel):
+    total_logged: int
+    window_size: int
+    avg_churn_probability: float
+    churn_rate: float
+    probability_distribution: list[ProbabilityBucket]
