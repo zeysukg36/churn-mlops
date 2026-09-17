@@ -27,7 +27,15 @@ async def lifespan(app: FastAPI):
     yield
     ml_models.clear()
 
-app = FastAPI(title="Churn Prediction API", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="Churn Prediction API",
+    version="1.0.0",
+    description=(
+        "Telco müşteri kaybı (churn) tahmini için RandomForest tabanlı bir MLOps servisi. "
+        "Tekil/toplu tahmin, MongoDB üzerinde otomatik loglama ve temel drift-özet istatistikleri sunar."
+    ),
+    lifespan=lifespan,
+)
 
 def _log_prediction_sync(input_data: dict, output_data: dict):
     log_collection.insert_one({
@@ -43,16 +51,18 @@ async def _log_safely(input_data: dict, output_data: dict):
     except Exception as e:
         print(f"[WARN] Loglama başarısız: {e}")
 
-@app.get("/health")
+@app.get("/health", tags=["Health"], summary="Servis ve model sağlık kontrolü")
 async def health_check():
+    """API'nin ayakta olup olmadığını ve modelin belleğe başarıyla yüklenip yüklenmediğini döner."""
     return {
         "status": "ok",
         "model_loaded": "pipeline" in ml_models,
         "environment": settings.APP_ENV,
     }
 
-@app.get("/model/info", response_model=ModelInfoResponse)
+@app.get("/model/info", response_model=ModelInfoResponse, tags=["Model"], summary="Aktif model sürümü ve metrikleri")
 async def model_info():
+    """Şu an serve edilen modelin versiyonunu, eğitim tarihini ve doğrulanmış test metriklerini döner."""
     if "metadata" not in ml_models:
         raise HTTPException(status_code=503, detail="Model metadata henüz yüklenmedi")
 
@@ -64,8 +74,9 @@ async def model_info():
         features_expected=len(metadata.get("categorical_columns", [])) + len(metadata.get("numeric_columns", [])),
     )
 
-@app.post("/predict", response_model=ChurnPredictionResponse)
+@app.post("/predict", response_model=ChurnPredictionResponse, tags=["Predictions"], summary="Tekil churn tahmini")
 async def predict_churn(request: ChurnPredictionRequest):
+    """Tek bir müşteri profili için churn olasılığını tahmin eder ve isteği MongoDB'ye loglar."""
     if "pipeline" not in ml_models:
         raise HTTPException(status_code=503, detail="Model henüz yüklenmedi")
 
@@ -88,8 +99,9 @@ async def predict_churn(request: ChurnPredictionRequest):
     return response
 
 
-@app.post("/predict/batch", response_model=BatchPredictionResponse)
+@app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["Predictions"], summary="Toplu churn tahmini")
 async def predict_churn_batch(batch_request: BatchPredictionRequest):
+    """Birden fazla müşteri profilini tek istekte skorlar; tüm sonuçları toplu olarak loglar."""
     if "pipeline" not in ml_models:
         raise HTTPException(status_code=503, detail="Model henüz yüklenmedi")
 
@@ -122,8 +134,9 @@ async def predict_churn_batch(batch_request: BatchPredictionRequest):
 
     return BatchPredictionResponse(results=results)
 
-@app.get("/stats", response_model=StatsResponse)
+@app.get("/stats", response_model=StatsResponse, tags=["Observability"], summary="Loglanan tahminlerin özet istatistikleri")
 async def get_stats(limit: int = Query(default=100, ge=1, le=1000)):
+    """Son N loglanmış tahminin olasılık dağılımını ve churn oranını özetler (basit drift gözlemi)."""
     try:
         stats = await run_in_threadpool(get_stats_sync, limit)
     except Exception as e:
