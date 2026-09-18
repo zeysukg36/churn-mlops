@@ -2,27 +2,37 @@ name: Run Tests
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
+    
+    services:
+      mongodb:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+
     steps:
-      - name: Repo'yu checkout et
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Python 3.12 kur
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
 
-      - name: Bağımlılıkları kur
-        working-directory: ./api
-        run: pip install -r requirements-dev.txt
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r api/requirements.txt
+        pip install pytest httpx
 
-      - name: pytest çalıştır
-        working-directory: ./api
-        run: pytest -v
+    - name: Run tests
+      env:
+        MONGO_URI: mongodb://localhost:27017/test_db
+      run: |
+        cd api
+        pytest -v
