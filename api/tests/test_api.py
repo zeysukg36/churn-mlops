@@ -26,3 +26,21 @@ def test_predict_invalid_category_returns_422(valid_payload):
     with TestClient(app) as client:
         response = client.post("/predict", json=bad_payload)
         assert response.status_code == 422
+
+def test_predict_batch_valid(valid_payload):
+    with TestClient(app) as client:
+        response = client.post("/predict/batch", json={"records": [valid_payload, valid_payload]})
+        assert response.status_code == 200
+        results = response.json()["results"]
+        assert len(results) == 2
+        for r in results:
+            assert r["churn_prediction"] in ["Yes", "No"]
+
+def test_stats_endpoint_schema():
+    with TestClient(app) as client:
+        response = client.get("/stats?limit=10")
+        assert response.status_code == 200
+        body = response.json()
+        assert "total_logged" in body
+        assert "probability_distribution" in body
+        assert isinstance(body["probability_distribution"], list)

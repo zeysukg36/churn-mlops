@@ -49,11 +49,11 @@ class ChurnPredictionResponse(BaseModel):
 
 
 class BatchPredictionRequest(BaseModel):
-    records: List[ChurnPredictionRequest]
+    records: list[ChurnPredictionRequest]
 
 
 class BatchPredictionResponse(BaseModel):
-    results: List[ChurnPredictionResponse]
+    results: list[ChurnPredictionResponse]
 
 
 class ModelInfoResponse(BaseModel):
@@ -61,8 +61,6 @@ class ModelInfoResponse(BaseModel):
     trained_at: str
     metrics: dict
     features_expected: int
-
-# api/models.py — dosyanın sonuna eklenecek
 
 class ProbabilityBucket(BaseModel):
     range: str
